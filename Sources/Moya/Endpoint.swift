@@ -32,27 +32,32 @@ open class Endpoint<Target> {
     /// The HTTP header fields for the request.
     open let httpHeaderFields: [String: String]?
 
+    /// The HTTP header fields for the request.
+    open let urlParameters: [String: Any]?
+    
     public init(url: String,
                 sampleResponseClosure: @escaping SampleResponseClosure,
                 method: Moya.Method,
                 task: Task,
-                httpHeaderFields: [String: String]?) {
+                httpHeaderFields: [String: String]?,
+                urlParameters:  [String: Any]?) {
 
         self.url = url
         self.sampleResponseClosure = sampleResponseClosure
         self.method = method
         self.task = task
         self.httpHeaderFields = httpHeaderFields
+        self.urlParameters = urlParameters
     }
 
     /// Convenience method for creating a new `Endpoint` with the same properties as the receiver, but with added HTTP header fields.
     open func adding(newHTTPHeaderFields: [String: String]) -> Endpoint<Target> {
-        return Endpoint(url: url, sampleResponseClosure: sampleResponseClosure, method: method, task: task, httpHeaderFields: add(httpHeaderFields: newHTTPHeaderFields))
+        return Endpoint(url: url, sampleResponseClosure: sampleResponseClosure, method: method, task: task, httpHeaderFields: add(httpHeaderFields: newHTTPHeaderFields), urlParameters: urlParameters)
     }
 
     /// Convenience method for creating a new `Endpoint` with the same properties as the receiver, but with replaced `task` parameter.
     open func replacing(task: Task) -> Endpoint<Target> {
-        return Endpoint(url: url, sampleResponseClosure: sampleResponseClosure, method: method, task: task, httpHeaderFields: httpHeaderFields)
+        return Endpoint(url: url, sampleResponseClosure: sampleResponseClosure, method: method, task: task, httpHeaderFields: httpHeaderFields, urlParameters: urlParameters)
     }
 
     fileprivate func add(httpHeaderFields headers: [String: String]?) -> [String: String]? {
@@ -77,33 +82,22 @@ extension Endpoint {
         }
 
         var request = URLRequest(url: requestURL)
+        if let urlParameters = urlParameters, !urlParameters.isEmpty {
+            let queryEncoding = URLEncoding(destination: .queryString)
+            request = try request.encoded(parameters: urlParameters, parameterEncoding: queryEncoding)
+        }
         request.httpMethod = method.rawValue
         request.allHTTPHeaderFields = httpHeaderFields
 
         switch task {
-        case .requestPlain, .uploadFile, .uploadMultipart, .downloadDestination:
-            return request
-        case .requestData(let data):
-            request.httpBody = data
+        case  .uploadFile, .uploadMultipart, .downloadDestination:
             return request
         case let .requestJSONEncodable(encodable):
             return try request.encoded(encodable: encodable)
         case let .requestParameters(parameters, parameterEncoding):
             return try request.encoded(parameters: parameters, parameterEncoding: parameterEncoding)
-        case let .uploadCompositeMultipart(_, urlParameters):
-            let parameterEncoding = URLEncoding(destination: .queryString)
-            return try request.encoded(parameters: urlParameters, parameterEncoding: parameterEncoding)
         case let .downloadParameters(parameters, parameterEncoding, _):
             return try request.encoded(parameters: parameters, parameterEncoding: parameterEncoding)
-        case let .requestCompositeData(bodyData: bodyData, urlParameters: urlParameters):
-            request.httpBody = bodyData
-            let parameterEncoding = URLEncoding(destination: .queryString)
-            return try request.encoded(parameters: urlParameters, parameterEncoding: parameterEncoding)
-        case let .requestCompositeParameters(bodyParameters: bodyParameters, bodyEncoding: bodyParameterEncoding, urlParameters: urlParameters):
-            if bodyParameterEncoding is URLEncoding { fatalError("URLEncoding is disallowed as bodyEncoding.") }
-            let bodyfulRequest = try request.encoded(parameters: bodyParameters, parameterEncoding: bodyParameterEncoding)
-            let urlEncoding = URLEncoding(destination: .queryString)
-            return try bodyfulRequest.encoded(parameters: urlParameters, parameterEncoding: urlEncoding)
         }
     }
 }

@@ -2,6 +2,7 @@ import Foundation
 
 /// A `TargetType` used to enable `MoyaProvider` to process multiple `TargetType`s.
 public enum MultiTarget: TargetType {
+    
     /// The embedded `TargetType`.
     case target(TargetType)
 
@@ -44,6 +45,11 @@ public enum MultiTarget: TargetType {
     /// The headers of the embedded target.
     public var headers: [String: String]? {
         return target.headers
+    }
+    
+    /// The headers of the embedded target.
+    public var urlParameters: [String : Any]? {
+        return target.urlParameters
     }
 
     /// The embedded `TargetType`.
