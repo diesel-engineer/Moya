@@ -90,7 +90,7 @@ extension Endpoint {
         request.allHTTPHeaderFields = httpHeaderFields
 
         switch task {
-        case  .uploadFile, .uploadMultipart, .downloadDestination:
+        case  .requestPlain, .uploadFile, .uploadMultipart, .downloadDestination:
             return request
         case let .requestJSONEncodable(encodable):
             return try request.encoded(encodable: encodable)

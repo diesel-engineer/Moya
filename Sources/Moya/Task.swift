@@ -2,6 +2,7 @@ import Foundation
 
 /// Represents an HTTP task.
 public enum Task {
+    case requestPlain
 
     /// A request body set with `Encodable` type
     case requestJSONEncodable(Encodable)
