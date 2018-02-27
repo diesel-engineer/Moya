@@ -18,7 +18,7 @@ func beIdenticalToResponse(_ expectedValue: Moya.Response) -> Predicate<Moya.Res
     }
 }
 
-class MoyaProviderIntegrationTests: QuickSpec {
+final class MoyaProviderIntegrationTests: QuickSpec {
     override func spec() {
         let userMessage = String(data: GitHub.userProfile("ashfurrow").sampleData, encoding: .utf8)
         let zenMessage = String(data: GitHub.zen.sampleData, encoding: .utf8)
@@ -299,10 +299,59 @@ class MoyaProviderIntegrationTests: QuickSpec {
                 }
             }
         }
+
+        // Resolves ValidationType not working with multipart upload #1590
+        describe("a provider performing a multipart upload with Alamofire validation") {
+            let provider = MoyaProvider<HTTPBin>()
+            let formData = HTTPBin.createTestMultipartFormData()
+
+            it("returns an error for status code different than 287") {
+                let target = HTTPBin.validatedUploadMultipart(formData, nil, [287])
+                var receievedResponse: Response?
+                var receivedError: Error?
+
+                waitUntil(timeout: 5.0) { done in
+                    provider.request(target) { result in
+                        switch result {
+                        case .success(let response):
+                            receievedResponse = response
+                        case .failure(let error):
+                            receivedError = error
+                        }
+                        done()
+                    }
+                }
+
+                expect(receievedResponse).to(beNil())
+                expect(receivedError).toNot(beNil())
+            }
+
+            it("returns a valid response for .succesCodes") {
+                let successCodes = ValidationType.successCodes.statusCodes
+                let target = HTTPBin.validatedUploadMultipart(formData, nil, successCodes)
+                var receievedResponse: Response?
+                var receivedError: Error?
+
+                waitUntil(timeout: 5.0) { done in
+                    provider.request(target) { result in
+                        switch result {
+                        case .success(let response):
+                            receievedResponse = response
+                        case .failure(let error):
+                            receivedError = error
+                        }
+                        done()
+                    }
+                }
+
+                expect(receievedResponse).toNot(beNil())
+                expect(receivedError).to(beNil())
+            }
+        }
     }
 }
 
-class StubManager: Manager {
+final class StubManager: Manager {
     var called = false
 
     override func request(_ urlRequest: URLRequestConvertible) -> DataRequest {
