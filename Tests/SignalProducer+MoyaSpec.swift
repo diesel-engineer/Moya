@@ -10,12 +10,63 @@ private func signalSendingData(_ data: Data, statusCode: Int = 200) -> SignalPro
 final class SignalProducerMoyaSpec: QuickSpec {
     override func spec() {
         describe("status codes filtering") {
-            it("filters out unrequested status codes") {
+            it("filters out unrequested status codes closed range upperbound") {
                 let data = Data()
                 let signal = signalSendingData(data, statusCode: 10)
 
                 var errored = false
                 signal.filter(statusCodes: 0...9).startWithResult { event in
+                    switch event {
+                    case .success(let object):
+                        fail("called on non-correct status code: \(object)")
+                    case .failure:
+                        errored = true
+                    }
+                }
+
+                expect(errored).to(beTruthy())
+            }
+
+            it("filters out unrequested status codes closed range lowerbound") {
+                let data = Data()
+                let signal = signalSendingData(data, statusCode: -1)
+
+                var errored = false
+                signal.filter(statusCodes: 0...9).startWithResult { event in
+                    switch event {
+                    case .success(let object):
+                        fail("called on non-correct status code: \(object)")
+                    case .failure:
+                        errored = true
+                    }
+                }
+
+                expect(errored).to(beTruthy())
+            }
+
+            it("filters out unrequested status codes range upperbound") {
+                let data = Data()
+                let signal = signalSendingData(data, statusCode: 10)
+
+                var errored = false
+                signal.filter(statusCodes: 0..<10).startWithResult { event in
+                    switch event {
+                    case .success(let object):
+                        fail("called on non-correct status code: \(object)")
+                    case .failure:
+                        errored = true
+                    }
+                }
+
+                expect(errored).to(beTruthy())
+            }
+
+            it("filters out unrequested status codes range lowerbound") {
+                let data = Data()
+                let signal = signalSendingData(data, statusCode: -1)
+
+                var errored = false
+                signal.filter(statusCodes: 0..<10).startWithResult { event in
                     switch event {
                     case .success(let object):
                         fail("called on non-correct status code: \(object)")
@@ -169,8 +220,8 @@ final class SignalProducerMoyaSpec: QuickSpec {
 
                 var receivedJSON: [String: String]?
                 signal.mapJSON().startWithResult { result in
-                    if case .success(let _json) = result,
-                        let json = _json as? [String: String] {
+                    if case .success(let response) = result,
+                        let json = response as? [String: String] {
                         receivedJSON = json
                     }
                 }
